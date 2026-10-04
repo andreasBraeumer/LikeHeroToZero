@@ -1,0 +1,48 @@
+<ui:composition xmlns="http://www.w3.org/1999/xhtml"
+                xmlns:h="jakarta.faces.html"
+                xmlns:f="jakarta.faces.core"
+                xmlns:ui="jakarta.faces.facelets"
+                xmlns:p="http://primefaces.org/ui"
+                template="/WEB-INF/templates/layout.xhtml">
+
+  <ui:define name="title">Anmelden</ui:define>
+
+  <ui:define name="content">
+    <section class="card narrow">
+      <h1>Anmeldung für Wissenschaftler:innen</h1>
+      <p class="lead">Melden Sie sich an, um neue Daten zu erfassen oder vorhandene Daten zu korrigieren.</p>
+
+      <h:panelGroup layout="block" styleClass="notice"
+                    rendered="#{userSession.loggedIn}">
+        Sie sind bereits als <strong>#{userSession.displayName}</strong> angemeldet.
+        <h:link outcome="/backend/emissions" value="Zur Datenpflege"/>
+      </h:panelGroup>
+
+      <h:form id="loginForm" styleClass="form" rendered="#{not userSession.loggedIn}">
+        <p:messages id="messages" globalOnly="true" showDetail="true" closable="false"/>
+
+        <div class="field">
+          <h:outputLabel for="username" value="Benutzername" styleClass="field-label"/>
+          <h:inputText id="username" value="#{loginController.username}" label="Benutzername"
+                       required="true" autocomplete="username" styleClass="input">
+            <f:validateLength maximum="50"/>
+          </h:inputText>
+          <h:message for="username" styleClass="field-error"/>
+        </div>
+
+        <div class="field">
+          <h:outputLabel for="password" value="Passwort" styleClass="field-label"/>
+          <h:inputSecret id="password" value="#{loginController.password}" label="Passwort"
+                         required="true" autocomplete="current-password" styleClass="input"/>
+          <h:message for="password" styleClass="field-error"/>
+        </div>
+
+        <div class="actions">
+          <h:commandButton id="login" value="Anmelden" action="#{loginController.login}"
+                           styleClass="button button-primary"/>
+          <h:link outcome="/index" value="Zurück zur Startseite" styleClass="button button-link"/>
+        </div>
+      </h:form>
+    </section>
+  </ui:define>
+</ui:composition>

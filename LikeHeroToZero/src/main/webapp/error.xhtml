@@ -1,0 +1,17 @@
+<ui:composition xmlns="http://www.w3.org/1999/xhtml"
+                xmlns:h="jakarta.faces.html"
+                xmlns:ui="jakarta.faces.facelets"
+                template="/WEB-INF/templates/layout.xhtml">
+
+  <ui:define name="title">Fehler</ui:define>
+
+  <ui:define name="content">
+    <section class="card narrow">
+      <h1>Das hat leider nicht geklappt</h1>
+      <p class="lead">
+        Die Seite wurde nicht gefunden oder es ist ein unerwarteter Fehler aufgetreten.
+      </p>
+      <h:link outcome="/index" value="Zur Startseite" styleClass="button button-primary"/>
+    </section>
+  </ui:define>
+</ui:composition>

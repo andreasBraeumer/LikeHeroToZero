@@ -1,0 +1,20 @@
+# Build
+target/
+build/
+*.class
+*.war
+*.log
+
+# IDE
+.idea/
+*.iml
+.project
+.classpath
+.settings/
+.vscode/
+.DS_Store
+
+setenv.*
+
+# Nur lokal
+PROJECT_BRIEF.md

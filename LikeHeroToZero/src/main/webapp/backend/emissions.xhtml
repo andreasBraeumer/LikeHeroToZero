@@ -1,0 +1,105 @@
+<ui:composition xmlns="http://www.w3.org/1999/xhtml"
+                xmlns:h="jakarta.faces.html"
+                xmlns:f="jakarta.faces.core"
+                xmlns:ui="jakarta.faces.facelets"
+                xmlns:p="http://primefaces.org/ui"
+                template="/WEB-INF/templates/layout.xhtml">
+
+  <ui:define name="metadata">
+    <f:metadata>
+      <f:viewParam name="land" value="#{backendEmissionController.filterCountryCode}"/>
+      <f:viewAction action="#{backendEmissionController.initializeList}"/>
+    </f:metadata>
+  </ui:define>
+
+  <ui:define name="title">Datenpflege</ui:define>
+
+  <ui:define name="content">
+    <div class="page-heading">
+      <div>
+        <h1>Datenpflege</h1>
+        <p class="lead">Emissionsdaten anlegen und korrigieren. Änderungen sind sofort auf der Startseite sichtbar.</p>
+      </div>
+      <h:button outcome="emission-edit" value="Neuer Datensatz" styleClass="button button-primary">
+        <f:param name="land" value="#{backendEmissionController.filterCountryCode}"
+                 disable="#{empty backendEmissionController.filterCountryCode}"/>
+      </h:button>
+    </div>
+
+    <h:form id="listForm">
+      <p:messages id="messages" globalOnly="true" showDetail="true" closable="true"/>
+
+      <div class="card toolbar">
+        <div class="field">
+          <h:outputLabel for="filter" value="Land" styleClass="field-label"/>
+          <p:selectOneMenu id="filter" value="#{backendEmissionController.filterCountryCode}"
+                           filter="true" filterMatchMode="contains" filterPlaceholder="Land suchen …"
+                           styleClass="country-select" autoWidth="false">
+            <f:selectItem itemLabel="Alle Länder" itemValue="#{null}"/>
+            <f:selectItems value="#{backendEmissionController.countries}" var="country"
+                           itemLabel="#{country.name}" itemValue="#{country.isoCode}"/>
+            <p:ajax event="change" listener="#{backendEmissionController.loadEmissionRecords}"
+                    update="records recordCount"/>
+          </p:selectOneMenu>
+        </div>
+        <h:outputText id="recordCount" styleClass="muted"
+                      value="#{backendEmissionController.emissionRecords.size()} Datensätze"/>
+        <p:commandButton id="import" value="Weltbank-Daten aktualisieren"
+                         action="#{backendEmissionController.runImport}"
+                         update="messages records recordCount" styleClass="ui-button-outlined import-button"
+                         icon="pi pi-refresh">
+          <p:confirm header="Import starten"
+                     message="Werte der World-Bank-API neu einlesen? Selbst erfasste Werte bleiben erhalten. Das dauert etwa eine halbe Minute."
+                     icon="pi pi-info-circle"/>
+        </p:commandButton>
+      </div>
+
+      <p:confirmDialog global="true" showEffect="fade" hideEffect="fade" responsive="true">
+        <p:commandButton value="Abbrechen" type="button" styleClass="ui-confirmdialog-no ui-button-flat"/>
+        <p:commandButton value="Starten" type="button" styleClass="ui-confirmdialog-yes"/>
+      </p:confirmDialog>
+
+      <p:blockUI block="records" trigger="import">
+        Import läuft …
+      </p:blockUI>
+
+      <p:dataTable id="records" value="#{backendEmissionController.emissionRecords}" var="emissionRecord"
+                   rows="25" paginator="true" paginatorPosition="bottom"
+                   paginatorTemplate="{CurrentPageReport} {FirstPageLink} {PreviousPageLink} {PageLinks} {NextPageLink} {LastPageLink} {RowsPerPageDropdown}"
+                   currentPageReportTemplate="{startRecord}–{endRecord} von {totalRecords}"
+                   rowsPerPageTemplate="25,50,100"
+                   emptyMessage="Keine Datensätze gefunden."
+                   styleClass="records-table" rowKey="#{emissionRecord.id}">
+        <p:column headerText="Land" sortBy="#{emissionRecord.country.name}">
+          #{emissionRecord.country.name}
+        </p:column>
+        <p:column headerText="Jahr" sortBy="#{emissionRecord.year}" styleClass="column-year">
+          #{emissionRecord.year}
+        </p:column>
+        <p:column headerText="Wert (#{backendEmissionController.unitLabel})"
+                  sortBy="#{emissionRecord.co2Megatonnes}" styleClass="column-number">
+          <h:outputText value="#{emissionRecord.co2Megatonnes}">
+            <f:convertNumber locale="de" minFractionDigits="2" maxFractionDigits="4"/>
+          </h:outputText>
+        </p:column>
+        <p:column headerText="Quelle" sortBy="#{emissionRecord.source}">
+          <h:outputText value="#{emissionRecord.source.label}"
+                        styleClass="#{emissionRecord.source.badgeStyleClass}"/>
+        </p:column>
+        <p:column headerText="Geändert von">
+          #{emissionRecord.changedBy.displayName}
+        </p:column>
+        <p:column headerText="Geändert am" sortBy="#{emissionRecord.changedAt}">
+          <h:outputText value="#{emissionRecord.changedAt}">
+            <f:convertDateTime type="localDateTime" pattern="dd.MM.yyyy HH:mm"/>
+          </h:outputText>
+        </p:column>
+        <p:column headerText="" styleClass="column-action">
+          <h:link outcome="emission-edit" value="Bearbeiten" styleClass="button button-small">
+            <f:param name="id" value="#{emissionRecord.id}"/>
+          </h:link>
+        </p:column>
+      </p:dataTable>
+    </h:form>
+  </ui:define>
+</ui:composition>

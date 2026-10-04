@@ -1,0 +1,100 @@
+<ui:composition xmlns="http://www.w3.org/1999/xhtml"
+                xmlns:h="jakarta.faces.html"
+                xmlns:f="jakarta.faces.core"
+                xmlns:ui="jakarta.faces.facelets"
+                xmlns:p="http://primefaces.org/ui"
+                template="/WEB-INF/templates/layout.xhtml">
+
+  <ui:define name="metadata">
+    <f:metadata>
+      <f:viewParam name="land" value="#{publicEmissionController.selectedCountryCode}"/>
+      <f:viewAction action="#{publicEmissionController.onPageLoad}"/>
+    </f:metadata>
+  </ui:define>
+
+  <ui:define name="title">CO₂-Ausstoß nach Land</ui:define>
+
+  <ui:define name="content">
+    <section class="introduction">
+      <h1>Wie viel CO₂ stößt Ihr Land aus?</h1>
+      <p class="lead">
+        Wählen Sie ein Land und sehen Sie den aktuellsten Wert, der in unserem Datensatz vorliegt,
+        dazu den Verlauf der Vorjahre.
+      </p>
+    </section>
+
+    <h:form id="countryForm" styleClass="card country-picker">
+      <h:outputLabel for="country" value="Land" styleClass="field-label"/>
+      <p:selectOneMenu id="country" value="#{publicEmissionController.selectedCountryCode}"
+                       filter="true" filterMatchMode="contains" filterPlaceholder="Land suchen …"
+                       styleClass="country-select" autoWidth="false">
+        <f:selectItem itemLabel="– Land auswählen –" itemValue="#{null}" noSelectionOption="true"/>
+        <f:selectItems value="#{publicEmissionController.countries}" var="country"
+                       itemLabel="#{country.name}" itemValue="#{country.isoCode}"/>
+        <p:ajax event="change" listener="#{publicEmissionController.loadSelectedCountry}"
+                update=":result"/>
+      </p:selectOneMenu>
+      <h:outputText value="Es sind noch keine Länder in der Datenbank vorhanden. Bitte versuchen Sie es später erneut."
+                    styleClass="hint" rendered="#{empty publicEmissionController.countries}"/>
+    </h:form>
+
+    <h:panelGroup id="result" layout="block">
+
+      <h:panelGroup layout="block" styleClass="card latest"
+                    rendered="#{not empty publicEmissionController.latestRecord}">
+        <p class="latest-label">
+          Aktuellster Wert für <strong>#{publicEmissionController.selectedCountry.name}</strong>
+        </p>
+        <p class="latest-value">
+          <h:outputText value="#{publicEmissionController.latestRecord.co2Megatonnes}">
+            <f:convertNumber locale="de" minFractionDigits="2" maxFractionDigits="2"/>
+          </h:outputText>
+          <span class="latest-unit">#{publicEmissionController.unitLabel}</span>
+        </p>
+        <p class="latest-details">
+          im Jahr <strong>#{publicEmissionController.latestRecord.year}</strong>
+          · Millionen Tonnen CO₂-Äquivalent
+          · Quelle: #{publicEmissionController.latestRecord.source.label}
+        </p>
+        <h:panelGroup layout="block" styleClass="change"
+                      rendered="#{not empty publicEmissionController.changePercent}">
+          <h:outputText value="#{publicEmissionController.changePercent}"
+                        styleClass="#{publicEmissionController.changeStyleClass}">
+            <f:convertNumber locale="de" minFractionDigits="1" maxFractionDigits="1"/>
+          </h:outputText>
+          <h:outputText value=" % gegenüber #{publicEmissionController.previousRecord.year}"/>
+        </h:panelGroup>
+      </h:panelGroup>
+
+      <h:panelGroup layout="block" styleClass="card notice"
+                    rendered="#{publicEmissionController.noDataAvailable}">
+        <p>
+          Für <strong>#{publicEmissionController.selectedCountry.name}</strong> liegen in unserem Datensatz
+          leider noch keine CO₂-Werte vor.
+        </p>
+      </h:panelGroup>
+
+      <h:panelGroup layout="block" styleClass="card"
+                    rendered="#{publicEmissionController.historyAvailable}">
+        <h2>Verlauf</h2>
+        <p:dataTable id="history" value="#{publicEmissionController.emissionHistory}" var="emissionRecord"
+                     rows="10" paginator="true" paginatorPosition="bottom"
+                     paginatorTemplate="{PreviousPageLink} {PageLinks} {NextPageLink}"
+                     styleClass="history-table">
+          <p:column headerText="Jahr" sortBy="#{emissionRecord.year}" styleClass="column-year">
+            #{emissionRecord.year}
+          </p:column>
+          <p:column headerText="CO₂-Ausstoß (#{publicEmissionController.unitLabel})"
+                    sortBy="#{emissionRecord.co2Megatonnes}" styleClass="column-number">
+            <h:outputText value="#{emissionRecord.co2Megatonnes}">
+              <f:convertNumber locale="de" minFractionDigits="2" maxFractionDigits="2"/>
+            </h:outputText>
+          </p:column>
+          <p:column headerText="Quelle">
+            #{emissionRecord.source.label}
+          </p:column>
+        </p:dataTable>
+      </h:panelGroup>
+    </h:panelGroup>
+  </ui:define>
+</ui:composition>

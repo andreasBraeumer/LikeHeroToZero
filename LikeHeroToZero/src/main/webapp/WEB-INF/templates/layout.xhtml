@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml"
+      xmlns:h="jakarta.faces.html"
+      xmlns:f="jakarta.faces.core"
+      xmlns:ui="jakarta.faces.facelets"
+      xmlns:p="http://primefaces.org/ui"
+      lang="de">
+<f:view locale="de">
+<ui:insert name="metadata"/>
+<h:head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title><ui:insert name="title">Like Hero To Zero</ui:insert> – Like Hero To Zero</title>
+  <f:facet name="last">
+    <h:outputStylesheet name="css/style.css"/>
+  </f:facet>
+</h:head>
+<h:body styleClass="page">
+  <header class="site-header">
+    <div class="container header-inner">
+      <h:link outcome="/index" styleClass="brand">
+        <span class="brand-mark">CO₂</span>
+        <span class="brand-text">Like Hero To Zero</span>
+      </h:link>
+      <nav class="main-navigation" aria-label="Hauptnavigation">
+        <h:link outcome="/index" value="CO₂-Daten" styleClass="navigation-link"/>
+        <h:link outcome="/backend/emissions" value="Datenpflege" styleClass="navigation-link"
+                rendered="#{userSession.loggedIn}"/>
+        <h:link outcome="/login" value="Anmelden" styleClass="navigation-link navigation-call-to-action"
+                rendered="#{not userSession.loggedIn}"/>
+        <h:form id="logoutForm" styleClass="logout-form" rendered="#{userSession.loggedIn}">
+          <span class="navigation-user">#{userSession.displayName}</span>
+          <h:commandLink id="logout" action="#{userSession.logout}" value="Abmelden" styleClass="navigation-link"/>
+        </h:form>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container content">
+    <ui:insert name="content"/>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <p>
+        Datenquelle: World Bank, World Development Indicators – Indikator
+        „CO₂-Emissionen gesamt ohne Landnutzung (Mt CO₂e)“ (WB_WDI_EN_GHG_CO2_MT_CE_AR5),
+        abgerufen über die <a href="https://data360.worldbank.org" rel="noopener" target="_blank">Data360 API</a>,
+        Lizenz <a href="https://creativecommons.org/licenses/by/4.0/deed.de" rel="noopener" target="_blank">CC BY 4.0</a>.
+        Ergänzt um Beiträge registrierter Wissenschaftler:innen.
+      </p>
+      <p class="footer-note">Like Hero To Zero – Prototyp im Rahmen der Fallstudie IPWA02-01</p>
+    </div>
+  </footer>
+</h:body>
+</f:view>
+</html>

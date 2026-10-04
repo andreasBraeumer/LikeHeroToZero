@@ -1,0 +1,27 @@
+name: likeherotozero
+
+services:
+  mysql:
+    image: mysql:8.4
+    container_name: likeherotozero-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: likeherotozero
+      MYSQL_USER: ${DB_USER:-likeherotozero}
+      MYSQL_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD in .env setzen}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?MYSQL_ROOT_PASSWORD in .env setzen}
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_0900_ai_ci
+    ports:
+      - "${DB_PORT:-3306}:3306"
+    volumes:
+      - lhtz-mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "--silent"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+volumes:
+  lhtz-mysql-data:

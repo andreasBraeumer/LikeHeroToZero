@@ -1,0 +1,80 @@
+<ui:composition xmlns="http://www.w3.org/1999/xhtml"
+                xmlns:h="jakarta.faces.html"
+                xmlns:f="jakarta.faces.core"
+                xmlns:ui="jakarta.faces.facelets"
+                xmlns:p="http://primefaces.org/ui"
+                xmlns:passthrough="jakarta.faces.passthrough"
+                template="/WEB-INF/templates/layout.xhtml">
+
+  <ui:define name="metadata">
+    <f:metadata>
+      <f:viewParam name="id" value="#{backendEmissionController.recordId}"/>
+      <f:viewParam name="land" value="#{backendEmissionController.filterCountryCode}"/>
+      <f:viewAction action="#{backendEmissionController.initializeForm}"/>
+    </f:metadata>
+  </ui:define>
+
+  <ui:define name="title">#{backendEmissionController.pageTitle}</ui:define>
+
+  <ui:define name="content">
+    <section class="card narrow">
+      <h1>#{backendEmissionController.pageTitle}</h1>
+
+      <h:panelGroup layout="block" styleClass="notice"
+                    rendered="#{backendEmissionController.editingImportedValue}">
+        Dieser Wert stammt aus dem Import der Weltbank. Nach dem Speichern gilt er als Forschungsbeitrag
+        und wird bei künftigen Importen nicht mehr überschrieben.
+      </h:panelGroup>
+
+      <h:form id="emissionForm" styleClass="form" rendered="#{not empty backendEmissionController.emissionRecord}">
+        <p:messages id="messages" globalOnly="true" showDetail="true" closable="false"/>
+
+        <div class="field">
+          <h:outputLabel for="country" value="Land *" styleClass="field-label"/>
+          <p:selectOneMenu id="country" value="#{backendEmissionController.countryCode}" label="Land"
+                           required="true" filter="true" filterMatchMode="contains"
+                           filterPlaceholder="Land suchen …" styleClass="country-select" autoWidth="false">
+            <f:selectItem itemLabel="– Land auswählen –" itemValue="#{null}" noSelectionOption="true"/>
+            <f:selectItems value="#{backendEmissionController.countries}" var="country"
+                           itemLabel="#{country.name}" itemValue="#{country.isoCode}"/>
+          </p:selectOneMenu>
+          <h:message for="country" styleClass="field-error"/>
+        </div>
+
+        <div class="field">
+          <h:outputLabel for="year" value="Jahr *" styleClass="field-label"/>
+          <h:inputText id="year" value="#{backendEmissionController.emissionRecord.year}" label="Jahr"
+                       required="true" maxlength="4" styleClass="input input-short"
+                       validator="#{backendEmissionController.validateYear}"
+                       passthrough:inputmode="numeric"/>
+          <h:message for="year" styleClass="field-error"/>
+          <h:panelGroup layout="block" styleClass="field-error-link"
+                        rendered="#{not empty backendEmissionController.duplicateRecordId}">
+            <h:link outcome="emission-edit" value="Vorhandenen Datensatz bearbeiten">
+              <f:param name="id" value="#{backendEmissionController.duplicateRecordId}"/>
+            </h:link>
+          </h:panelGroup>
+          <small class="field-help">Ganzzahl von #{backendEmissionController.minimumYear} bis #{backendEmissionController.currentYear}.</small>
+        </div>
+
+        <div class="field">
+          <h:outputLabel for="co2Megatonnes" value="CO₂-Ausstoß in #{backendEmissionController.unitLabel} *"
+                         styleClass="field-label"/>
+          <p:inputNumber id="co2Megatonnes" value="#{backendEmissionController.emissionRecord.co2Megatonnes}"
+                         label="CO₂-Ausstoß" required="true" decimalSeparator="," thousandSeparator="."
+                         decimalPlaces="4" padControl="false" styleClass="input-number">
+            <f:validateDoubleRange minimum="0" maximum="100000"/>
+          </p:inputNumber>
+          <h:message for="co2Megatonnes" styleClass="field-error"/>
+          <small class="field-help">Millionen Tonnen CO₂-Äquivalent, nicht negativ, bis zu vier Nachkommastellen.</small>
+        </div>
+
+        <div class="actions">
+          <h:commandButton id="save" value="Speichern" action="#{backendEmissionController.save}"
+                           styleClass="button button-primary"/>
+          <h:button outcome="emissions" value="Abbrechen" styleClass="button button-secondary"/>
+        </div>
+      </h:form>
+    </section>
+  </ui:define>
+</ui:composition>
