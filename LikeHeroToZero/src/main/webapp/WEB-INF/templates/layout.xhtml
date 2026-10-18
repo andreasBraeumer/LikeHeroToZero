@@ -26,6 +26,8 @@
         <h:link outcome="/index" value="CO₂-Daten" styleClass="navigation-link"/>
         <h:link outcome="/backend/emissions" value="Datenpflege" styleClass="navigation-link"
                 rendered="#{userSession.loggedIn}"/>
+        <h:link outcome="/register" value="Registrieren" styleClass="navigation-link"
+                rendered="#{not userSession.loggedIn}"/>
         <h:link outcome="/login" value="Anmelden" styleClass="navigation-link navigation-call-to-action"
                 rendered="#{not userSession.loggedIn}"/>
         <h:form id="logoutForm" styleClass="logout-form" rendered="#{userSession.loggedIn}">

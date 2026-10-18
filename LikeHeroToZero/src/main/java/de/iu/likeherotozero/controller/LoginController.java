@@ -2,6 +2,7 @@ package de.iu.likeherotozero.controller;
 
 import de.iu.likeherotozero.dao.UserDAO;
 import de.iu.likeherotozero.model.User;
+import de.iu.likeherotozero.service.ApplicationInitializer;
 import de.iu.likeherotozero.service.PasswordHasher;
 import jakarta.enterprise.context.RequestScoped;
 import jakarta.faces.application.FacesMessage;
@@ -22,11 +23,15 @@ public class LoginController {
     @Inject
     private UserSession userSession;
 
+    @Inject
+    private ApplicationInitializer applicationInitializer;
+
     private String username;
     private String password;
 
     public String login() {
         FacesContext facesContext = FacesContext.getCurrentInstance();
+        applicationInitializer.ensureInitialized();
 
         String trimmedUsername = null;
         if (username != null) {

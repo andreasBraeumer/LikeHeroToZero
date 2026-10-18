@@ -29,7 +29,7 @@ Beim ersten Start braucht der Server Internetzugang zu `https://data360api.world
 ## 1. Datenbank starten (MySQL 8 per Docker)
 
 ```sh
-docker compose up -d        # startet MySQL 8 auf localhost:3306 mit dem Schema "likeherotozero"
+docker compose up -d --wait # startet MySQL 8 auf localhost:3306 und wartet, bis die Datenbank bereit ist
 ```
 
 Die Zugangsdaten stehen in der `.env` im Projektordner. Sie ist bei diesem Uni-Projekt bewusst eingecheckt, damit Datenbank und Anwendung nach dem Herunterladen ohne weitere Einrichtung zusammenpassen. Die Passwörter gelten nur für die lokale Docker-Datenbank. Für einen echten Betrieb müssten sie geändert und aus dem Repository entfernt werden. Die Daten liegen im Docker-Volume `lhtz-mysql-data` und überstehen Neustarts. `docker compose down -v` löscht sie.
@@ -61,6 +61,7 @@ Für die lokale Entwicklung reicht deshalb die `.env`. In IntelliJ müssen keine
 | `DB_PASSWORD` | Passwort des Datenbankbenutzers | *(leer, muss gesetzt werden)* |
 | `DEMO_USER` | Benutzername des Demo-Kontos | `demo` |
 | `DEMO_PASSWORD` | Passwort des Demo-Kontos | *(muss gesetzt werden)* |
+| `REGISTRATION_CODE` | Code, den neue Wissenschaftler:innen bei der Registrierung angeben müssen | *(nicht gesetzt = Registrierung abgeschaltet)* |
 
 ## 3. Bauen und Starten
 
@@ -99,12 +100,19 @@ Danach liest und schreibt die Anwendung nur noch die eigene Datenbank.
 
 Um das Passwort zu ändern, den Wert in `.env` anpassen und Tomcat neu starten.
 
+## Registrierung
+
+Weitere Wissenschaftler:innen legen sich unter „Registrieren“ (`register.xhtml`) selbst ein Konto an. Dafür brauchen sie den Registrierungscode aus `REGISTRATION_CODE`, den die Projektleitung weitergibt. So kann nicht jede:r Besucher:in Daten ändern. Ist `REGISTRATION_CODE` nicht gesetzt, zeigt die Seite nur einen Hinweis und nimmt keine Registrierungen an.
+
+Nach erfolgreicher Registrierung ist man sofort angemeldet und landet in der Datenpflege. Das Passwort wird wie beim Demo-Konto nur als PBKDF2-Hash gespeichert.
+
 ## Bedienung
 
 | Seite | Zugriff | Funktion |
 |---|---|---|
 | `index.xhtml` | öffentlich | Land wählen (Suche im Auswahlfeld). Der aktuellste Wert wird immer aus der Datenbank berechnet (höchstes Jahr je Land). Darunter stehen die Veränderung zum Vorjahr und der Verlauf. Das Land lässt sich auch per URL setzen (`?land=DEU`), ohne Parameter wird es aus der Browsersprache vorgeschlagen. |
 | `login.xhtml` | öffentlich | Anmeldung, Fehlermeldung bei falschen Zugangsdaten |
+| `register.xhtml` | öffentlich | Registrierung mit Benutzername (3 bis 50 Zeichen, eindeutig), Anzeigename, Passwort (mindestens 8 Zeichen, zweimal) und Registrierungscode |
 | `backend/emissions.xhtml` | Login | alle Datensätze, Filter nach Land, Sortierung, „Neuer Datensatz“, „Bearbeiten“, manueller Import |
 | `backend/emission-edit.xhtml` | Login | Land (Pflicht), Jahr (Pflicht, ganzzahlig, 1750 bis aktuelles Jahr), Wert in Mt CO₂e (Pflicht, 0 bis 100.000). Doppelte Kombination aus Land und Jahr wird abgefangen, mit Link zum vorhandenen Datensatz. |
 
@@ -119,14 +127,15 @@ src/main/java/de/iu/likeherotozero/
   configuration/ ApplicationSettings
   model/        Country, EmissionRecord, User, RecordSource
   dao/          CountryDAO, EmissionRecordDAO, UserDAO, EntityManagerProvider
-  controller/   PublicEmissionController, LoginController, UserSession, BackendEmissionController
+  controller/   PublicEmissionController, LoginController, RegistrationController, UserSession,
+                BackendEmissionController
   service/      DataImportService, Data360Client, PasswordHasher, ApplicationInitializer
   web/          AuthenticationFilter
 src/main/resources/
   META-INF/persistence.xml
   de/iu/likeherotozero/messages.properties   deutsche Validierungsmeldungen
 src/main/webapp/
-  index.xhtml, login.xhtml, error.xhtml
+  index.xhtml, login.xhtml, register.xhtml, error.xhtml
   backend/emissions.xhtml, backend/emission-edit.xhtml
   WEB-INF/web.xml, beans.xml, faces-config.xml, templates/layout.xhtml
   resources/css/style.css
@@ -135,6 +144,7 @@ docs/           Entwürfe und Diagramme für den Fallstudienbericht
 
 ## Dokumentation
 
+- [INSTALLATION.md](INSTALLATION.md): Schritt-für-Schritt-Anleitung für die Installation auf einem neuen Rechner
 - [docs/projektdokumentation.md](docs/projektdokumentation.md): ausführliche Erklärung aller Prozesse, Daten und Komponenten
 - [docs/wireframes.md](docs/wireframes.md): Skizzen der Seiten
 - [docs/navigation.md](docs/navigation.md): Navigation zwischen den Seiten

@@ -44,6 +44,17 @@ classDiagram
         -String password
         +login() String
     }
+    class RegistrationController {
+        <<Named, RequestScoped>>
+        -String username
+        -String displayName
+        -String password
+        -String passwordConfirmation
+        -String registrationCode
+        +isRegistrationEnabled() boolean
+        +validateUsername(facesContext, component, value)
+        +register() String
+    }
     class UserSession {
         <<Named, SessionScoped>>
         -Long userId
@@ -82,6 +93,7 @@ classDiagram
     class ApplicationInitializer {
         <<ApplicationScoped>>
         ~onApplicationStart(@Observes @Initialized)
+        +ensureInitialized()
         ~synchronizeDemoAccount()
     }
     class Data360Client {
@@ -159,9 +171,15 @@ classDiagram
 
     PublicEmissionController ..> CountryDAO : Inject
     PublicEmissionController ..> EmissionRecordDAO : Inject
+    PublicEmissionController ..> ApplicationInitializer : Inject
+    LoginController ..> ApplicationInitializer : Inject
     LoginController ..> UserDAO : Inject
     LoginController ..> UserSession : Inject
     LoginController ..> PasswordHasher : verwendet
+    RegistrationController ..> UserDAO : Inject
+    RegistrationController ..> UserSession : Inject
+    RegistrationController ..> PasswordHasher : verwendet
+    RegistrationController ..> ApplicationSettings : verwendet
     BackendEmissionController ..> EmissionRecordDAO : Inject
     BackendEmissionController ..> CountryDAO : Inject
     BackendEmissionController ..> UserDAO : Inject
@@ -191,6 +209,7 @@ classDiagram
 |---|---|---|
 | `PublicEmissionController` | `@Named @ViewScoped` | Länderauswahl, aktuellster Wert, Verlauf (US1) |
 | `LoginController` | `@Named @RequestScoped` | Zugangsdaten prüfen, Session-ID erneuern, ins Backend weiterleiten |
+| `RegistrationController` | `@Named @RequestScoped` | Selbstregistrierung mit Registrierungscode (`REGISTRATION_CODE`), Validator-Methode für eindeutige Benutzernamen, Passwort-Wiederholung prüfen, danach direkt anmelden |
 | `UserSession` | `@Named @SessionScoped` | angemeldete:r Benutzer:in (nur ID, Name, Anzeigename), Logout |
 | `BackendEmissionController` | `@Named @ViewScoped` | Liste mit Filter, Anlegen und Ändern mit Validator-Methode für das Jahr und Duplikatprüfung, manueller Import (US2) |
 | `EmissionRecordDAO` | `@ApplicationScoped` | Datenbankzugriffe für Emissionsdaten |
@@ -205,7 +224,7 @@ classDiagram
 
 `ApplicationInitializer` gleicht beim Start das Demo-Konto mit `DEMO_PASSWORD` ab. Er legt das Konto an, falls es fehlt, und passt den Hash nur an, wenn das Passwort nicht mehr übereinstimmt.
 
-Gegenüber dem Briefing ist `ApplicationInitializer` dazugekommen. Er bündelt die Startlogik (Demo-Konto und Erstimport), damit `DataImportService` nur für den Import zuständig bleibt. `AuthFilter` aus dem Briefing heißt gemäß den Code-Konventionen `AuthenticationFilter`.
+Gegenüber dem Briefing sind `ApplicationInitializer` und `RegistrationController` dazugekommen. `RegistrationController` gehört zur Seite `register.xhtml` (pro Seite ein Controller) und ist wie das Login-Formular `@RequestScoped`. Er bündelt die Startlogik (Demo-Konto und Erstimport), damit `DataImportService` nur für den Import zuständig bleibt. `AuthFilter` aus dem Briefing heißt gemäß den Code-Konventionen `AuthenticationFilter`.
 
 ## Ablauf: Datensatz speichern (US2)
 

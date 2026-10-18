@@ -7,7 +7,7 @@ Die umgesetzten Seiten zeigen die Screenshots in [screenshots/](screenshots/).
 
 ```
 +----------------------------------------------------------------------+
-| [CO₂] Like Hero To Zero              CO₂-Daten   [Anmelden]          |  ohne Login
+| [CO₂] Like Hero To Zero    CO₂-Daten  Registrieren  [Anmelden]       |  ohne Login
 | [CO₂] Like Hero To Zero    CO₂-Daten  Datenpflege  Name  Abmelden    |  mit Login
 +----------------------------------------------------------------------+
 |                                                                      |
@@ -67,6 +67,41 @@ Die umgesetzten Seiten zeigen die Screenshots in [screenshots/](screenshots/).
  | [______________________]                  |
  |                                           |
  | [Anmelden]  Zurück zur Startseite         |
+ | Noch kein Konto? Jetzt registrieren       |
+ +-------------------------------------------+
+```
+
+## 2a. Registrierung `register.xhtml` (öffentlich)
+
+```
+ +-------------------------------------------+
+ | Registrierung für Wissenschaftler:innen   |
+ | Den Registrierungscode erhalten Sie von   |
+ | der Projektleitung.                       |
+ |                                           |
+ | Benutzername *                            |
+ | [______________________]                  |
+ | Benutzername: Dieser Name ist bereits     |  <- Meldung am Feld
+ | vergeben.                                 |
+ | 3 bis 50 Zeichen: Buchstaben, Ziffern ... |
+ | Anzeigename *                             |
+ | [______________________]                  |
+ | Passwort *                                |
+ | [______________________]                  |
+ | Mindestens 8 Zeichen.                     |
+ | Passwort wiederholen *                    |
+ | [______________________]                  |
+ | Registrierungscode *                      |
+ | [______________________]                  |
+ |                                           |
+ | [Registrieren]  Bereits registriert?      |
+ |                 Anmelden                  |
+ +-------------------------------------------+
+
+ Ohne REGISTRATION_CODE:
+ +-------------------------------------------+
+ | Die Registrierung ist derzeit nicht       |
+ | freigeschaltet. ...                       |
  +-------------------------------------------+
 ```
 

@@ -52,12 +52,12 @@ public class DataImportService {
     private final Data360Client data360Client = new Data360Client();
 
     public void importIfEmpty() {
+        long existingRecordCount = emissionRecordDAO.count();
+        if (existingRecordCount > 0) {
+            LOGGER.info("Import übersprungen, es sind bereits " + existingRecordCount + " Emissionswerte vorhanden.");
+            return;
+        }
         try {
-            long existingRecordCount = emissionRecordDAO.count();
-            if (existingRecordCount > 0) {
-                LOGGER.info("Import übersprungen, es sind bereits " + existingRecordCount + " Emissionswerte vorhanden.");
-                return;
-            }
             LOGGER.info("Keine Emissionsdaten vorhanden, starte Erstimport aus der World Bank Data360 API ...");
             ImportResult importResult = importFromApi();
             LOGGER.info("Erstimport abgeschlossen: " + importResult.summary());

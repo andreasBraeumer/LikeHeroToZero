@@ -147,7 +147,8 @@ LikeHeroToZero/
     │   ├── model/                  Country, EmissionRecord, User, RecordSource
     │   ├── dao/                    EntityManagerProvider, CountryDAO, EmissionRecordDAO, UserDAO
     │   ├── controller/             PublicEmissionController, LoginController,
-    │   │                           UserSession, BackendEmissionController
+    │   │                           RegistrationController, UserSession,
+    │   │                           BackendEmissionController
     │   ├── service/                DataImportService, Data360Client,
     │   │                           PasswordHasher, ApplicationInitializer
     │   └── web/                    AuthenticationFilter
@@ -157,6 +158,7 @@ LikeHeroToZero/
     ├── main/webapp/
     │   ├── index.xhtml             öffentliche Startseite
     │   ├── login.xhtml             Anmeldung
+    │   ├── register.xhtml          Registrierung mit Registrierungscode
     │   ├── error.xhtml             Fehlerseite (404/500)
     │   ├── backend/emissions.xhtml       Liste der Datensätze
     │   ├── backend/emission-edit.xhtml   Formular Anlegen/Bearbeiten
@@ -197,12 +199,13 @@ LikeHeroToZero/
 |---|---|---|---|
 | `PublicEmissionController` | `@ViewScoped` | `index.xhtml` | Länderliste laden, Land aus URL oder Browsersprache vorschlagen, aktuellsten Wert und Verlauf laden, Veränderung zum Vorjahr berechnen |
 | `LoginController` | `@RequestScoped` | `login.xhtml` | Zugangsdaten prüfen, Session-ID erneuern, ins Backend weiterleiten |
+| `RegistrationController` | `@RequestScoped` | `register.xhtml` | Registrierungscode prüfen, Benutzername auf Eindeutigkeit prüfen, Passwort-Wiederholung vergleichen, Konto mit Passwort-Hash anlegen, direkt anmelden |
 | `UserSession` | `@SessionScoped` | alle | merkt sich ID, Benutzername und Anzeigenamen der angemeldeten Person, Logout |
 | `BackendEmissionController` | `@ViewScoped` | `backend/emissions.xhtml`, `backend/emission-edit.xhtml` | Liste mit Filter, manueller Import, Formular laden, Jahr validieren, Duplikat prüfen, speichern |
 
 **Warum diese Scopes?**
 
-- `@RequestScoped` für das Login-Formular: Die Eingaben werden nur für eine Anfrage gebraucht.
+- `@RequestScoped` für das Login- und das Registrierungsformular: Die Eingaben werden nur für eine Anfrage gebraucht, Passwörter bleiben nicht länger als nötig im Speicher.
 - `@ViewScoped` für die Seiten-Controller: Der Zustand (z. B. das gewählte Land) bleibt erhalten, solange man auf der Seite bleibt, auch über Ajax-Anfragen hinweg.
 - `@SessionScoped` für `UserSession`: Die Anmeldung gilt für die ganze Sitzung.
 - `@ApplicationScoped` für DAOs und Services: Sie haben keinen benutzerbezogenen Zustand und existieren einmal pro Anwendung.
@@ -226,6 +229,8 @@ flowchart LR
     PEC --> ERD[EmissionRecordDAO]
     LC[LoginController] --> UD[UserDAO]
     LC --> US[UserSession]
+    RC[RegistrationController] --> UD
+    RC --> US
     BEC[BackendEmissionController] --> ERD
     BEC --> CD
     BEC --> UD
@@ -298,7 +303,7 @@ Sobald ein Weltbank-Wert im Backend bearbeitet wird, wechselt er auf `RESEARCH`.
 |---|---|
 | Länder | 203 (alle ISO-Länder mit Daten plus Kosovo) |
 | Emissionswerte | 11.165 (Jahre 1970 bis 2024) |
-| Benutzerkonten | 1 (Demo-Konto) |
+| Benutzerkonten | 1 (Demo-Konto), weitere über die Registrierung |
 
 Die Tabellen legt Hibernate beim ersten Start selbst an (`hibernate.hbm2ddl.auto=update`). Details stehen in [datenmodell.md](datenmodell.md).
 
@@ -362,7 +367,9 @@ sequenceDiagram
     end
 ```
 
-Fehler beim Start (z. B. Datenbank nicht erreichbar, API offline) werden protokolliert, die Anwendung startet trotzdem.
+**Wenn die Datenbank noch nicht bereit ist:** Der `ApplicationInitializer` versucht die Initialisierung beim Start bis zu 30-mal im Abstand von 3 Sekunden (bis zu 90 Sekunden). Schlägt auch das fehl, startet die Anwendung trotzdem. `PublicEmissionController` und `LoginController` rufen dann bei jedem Aufruf `ensureInitialized()` auf, bis die Initialisierung einmal gelungen ist. Ein Neustart von Tomcat ist also nie nötig.
+
+Ist die Weltbank-API nicht erreichbar, gilt die Initialisierung trotzdem als abgeschlossen, weil die Datenbank funktioniert. Der Import lässt sich dann im Backend manuell nachholen.
 
 ### 8.2 Import aus der Weltbank-API
 
@@ -454,6 +461,45 @@ sequenceDiagram
 
 Bei unbekanntem Benutzernamen rechnet `verify` trotzdem einen Hash. Die Antwortzeit verrät so nicht, ob es den Namen gibt.
 
+**Registrierung**
+
+Wer noch kein Konto hat, registriert sich über `register.xhtml`. Damit nicht jede:r Besucher:in Daten ändern kann, ist ein Registrierungscode nötig, den die Projektleitung weitergibt (Einstellung `REGISTRATION_CODE`). Ist kein Code gesetzt, ist die Registrierung abgeschaltet.
+
+```mermaid
+sequenceDiagram
+    actor W as Wissenschaftler:in
+    participant V as register.xhtml
+    participant RC as RegistrationController
+    participant UD as UserDAO
+    participant PH as PasswordHasher
+    participant US as UserSession
+
+    W->>V: Benutzername, Anzeigename, Passwort (2x), Code, „Registrieren“
+    V->>V: Pflichtfelder, Längen, erlaubte Zeichen prüfen
+    V->>RC: validateUsername (Validator-Methode)
+    RC->>UD: findByUsername
+    alt Name vergeben oder Feldfehler
+        V-->>W: Meldung am Feld
+    else gültig
+        V->>RC: register()
+        alt Code falsch oder Passwörter verschieden
+            RC-->>V: Meldung am Feld Registrierungscode bzw. Passwort wiederholen
+        else alles richtig
+            RC->>PH: hash(Passwort)
+            RC->>UD: create(user) in einer Transaktion
+            alt Unique-Constraint verletzt (gleichzeitige Registrierung)
+                RC-->>V: Meldung am Feld Benutzername
+            else gespeichert
+                RC->>RC: Session-ID erneuern
+                RC->>US: login(user)
+                RC-->>W: Weiterleitung auf backend/emissions.xhtml mit Willkommensmeldung
+            end
+        end
+    end
+```
+
+Der Vergleich der Passwörter läuft in der Action-Methode, weil beide Felder erst nach der Validierungsphase im Modell stehen (Abschnitt 10).
+
 ### 8.5 Zugriffsschutz
 
 ```mermaid
@@ -510,6 +556,11 @@ Beim Bearbeiten eines Weltbank-Werts weist das Formular darauf hin, dass der Wer
 flowchart LR
     index["index.xhtml<br/>öffentlich"] -->|Anmelden| login["login.xhtml"]
     login -->|falsche Daten| login
+    index -->|Registrieren| register["register.xhtml"]
+    login -->|Jetzt registrieren| register
+    register -->|Anmelden| login
+    register -->|Fehler in der Eingabe| register
+    register -->|Erfolg, direkt angemeldet| list
     login -->|Erfolg| list["backend/emissions.xhtml"]
     list -->|Neuer Datensatz / Bearbeiten| edit["backend/emission-edit.xhtml"]
     edit -->|Speichern oder Abbrechen| list
@@ -523,11 +574,12 @@ flowchart LR
 |---|---|---|---|
 | `index.xhtml` | öffentlich | `PublicEmissionController` | Länderauswahl, aktuellster Wert, Verlauf |
 | `login.xhtml` | öffentlich | `LoginController` | Anmeldeformular |
+| `register.xhtml` | öffentlich | `RegistrationController` | Registrierungsformular mit Registrierungscode |
 | `backend/emissions.xhtml` | Login | `BackendEmissionController` | Liste, Filter, Import |
 | `backend/emission-edit.xhtml` | Login | `BackendEmissionController` | Formular Anlegen/Bearbeiten |
 | `error.xhtml` | öffentlich | – | freundliche Fehlerseite bei 404/500 |
 
-Alle Seiten nutzen das Template `WEB-INF/templates/layout.xhtml`: Kopfzeile mit Navigation (je nach Anmeldestatus „Anmelden“ oder „Datenpflege“ + Name + „Abmelden“), Inhaltsbereich und Fußzeile mit Quellenangabe.
+Alle Seiten nutzen das Template `WEB-INF/templates/layout.xhtml`: Kopfzeile mit Navigation (je nach Anmeldestatus „Registrieren“ + „Anmelden“ oder „Datenpflege“ + Name + „Abmelden“), Inhaltsbereich und Fußzeile mit Quellenangabe.
 
 **URL-Parameter**
 
@@ -551,6 +603,11 @@ Alle Seiten nutzen das Template `WEB-INF/templates/layout.xhtml`: Kopfzeile mit 
 | Land + Jahr | kein Duplikat | Abfrage vor dem Speichern + Unique-Constraint | „Jahr: Für Deutschland gibt es für 2024 bereits einen Datensatz …“ |
 | Benutzername | Pflicht, max. 50 Zeichen | `required`, `f:validateLength` | „Benutzername: Bitte einen Wert angeben.“ |
 | Passwort | Pflicht | `required="true"` | „Passwort: Bitte einen Wert angeben.“ |
+| Registrierung: Benutzername | Pflicht, 3 bis 50 Zeichen, nur `A–Z a–z 0–9 . _ -`, noch nicht vergeben | `required`, `f:validateLength`, Validator-Methode `validateUsername` (erlaubte Zeichen, Eindeutigkeit) + Unique-Constraint | „Benutzername: Dieser Name ist bereits vergeben.“ |
+| Registrierung: Anzeigename | Pflicht, 2 bis 100 Zeichen | `required`, `f:validateLength` | „Anzeigename: Mindestens 2 Zeichen erforderlich.“ |
+| Registrierung: Passwort | Pflicht, 8 bis 128 Zeichen | `required`, `f:validateLength` | „Passwort: Mindestens 8 Zeichen erforderlich.“ |
+| Registrierung: Passwort wiederholen | gleich wie Passwort | Vergleich in `register()` | „Passwort wiederholen: Die Passwörter stimmen nicht überein.“ |
+| Registrierung: Registrierungscode | Pflicht, muss `REGISTRATION_CODE` entsprechen | `required`, Prüfung in `register()` | „Registrierungscode: Der Code ist nicht gültig.“ |
 
 - Feldmeldungen stehen direkt am betroffenen Feld (`h:message`), allgemeine Meldungen oben im Formular (`p:messages`).
 - Das Attribut `label` sorgt dafür, dass in der Meldung „Jahr“ steht statt einer technischen ID.
@@ -565,7 +622,8 @@ Alle Seiten nutzen das Template `WEB-INF/templates/layout.xhtml`: Kopfzeile mit 
 |---|---|
 | Passwörter | Nur als PBKDF2-Hash (HmacSHA256, 210.000 Iterationen, 16 Byte Zufalls-Salt). Format `pbkdf2$Iterationen$Salt$Hash`. |
 | Vergleich | `MessageDigest.isEqual` (zeitkonstant), Dummy-Hash bei unbekanntem Benutzer |
-| Session Fixation | Neue Session-ID nach erfolgreichem Login (`changeSessionId`) |
+| Session Fixation | Neue Session-ID nach erfolgreichem Login und nach der Registrierung (`changeSessionId`) |
+| Registrierung | Nur mit Registrierungscode (`REGISTRATION_CODE`), zeitkonstanter Vergleich mit `MessageDigest.isEqual`. Ohne gesetzten Code ist die Registrierung abgeschaltet. |
 | Session-Cookie | `HttpOnly`, nur Cookie-Tracking (keine Session-ID in URLs), Timeout 30 Minuten |
 | Zugriffsschutz | `AuthenticationFilter` auf `/backend/*`, auch für Ajax |
 | Caching | Backend-Seiten mit `no-store`, damit nach dem Logout nichts aus dem Cache erscheint |
@@ -592,6 +650,7 @@ Alle Seiten nutzen das Template `WEB-INF/templates/layout.xhtml`: Kopfzeile mit 
 | `DB_PASSWORD` | Datenbankpasswort | leer (muss gesetzt werden) |
 | `DEMO_USER` | Benutzername des Demo-Kontos | `demo` |
 | `DEMO_PASSWORD` | Passwort des Demo-Kontos | keiner (muss gesetzt werden) |
+| `REGISTRATION_CODE` | Code für die Selbstregistrierung | keiner (Registrierung abgeschaltet) |
 
 Die `.env` wird außerdem von `docker-compose.yml` gelesen (`DB_USER`, `DB_PASSWORD`, `MYSQL_ROOT_PASSWORD`, `DB_PORT`). So stehen alle lokalen Zugangsdaten an einer Stelle.
 
@@ -625,7 +684,7 @@ Um das Passwort zu ändern, den Wert in `.env` anpassen und Tomcat neu starten.
 ### 13.1 Datenbank (Docker)
 
 ```sh
-docker compose up -d      # MySQL starten (bleibt über Neustarts erhalten)
+docker compose up -d --wait   # MySQL starten und warten, bis sie bereit ist
 docker compose down       # stoppen, Daten bleiben erhalten
 docker compose down -v    # stoppen und alle Daten löschen
 ```
@@ -694,7 +753,7 @@ Zusätzlich wurde die Anwendung auf Tomcat 10.1 mit MySQL durchgeklickt: per HTT
 |---|---|---|
 | Server | Tomcat 10.1 statt TomEE | vorhandene Umgebung. Faces, CDI und JPA kommen deshalb als Bibliotheken mit. |
 | Datenbank | MySQL 8 in Docker | entspricht dem Briefing, mit einem Befehl reproduzierbar |
-| Selbstregistrierung | nicht gebaut | nicht gefordert. Eine offene Registrierung würde jedem erlauben, öffentliche Daten zu ändern. |
+| Selbstregistrierung | gebaut, nur mit Registrierungscode | Ursprünglich nicht gefordert (Briefing: Demo-Konto genügt), auf Wunsch ergänzt. Eine offene Registrierung würde jedem erlauben, öffentliche Daten zu ändern. Der Code hält das Backend auf eingeladene Wissenschaftler:innen beschränkt, ohne einen Freigabe-Workflow (US3) zu bauen. |
 | Freigabe-Workflow (US3) | nicht gebaut | nur COULD-Priorität |
 | Löschen von Datensätzen | nicht gebaut | nicht gefordert. Korrekturen laufen über „Bearbeiten“, gelöschte Weltbank-Werte kämen beim nächsten Import zurück. |
 | Aktuellster Wert | aus der eigenen DB (höchstes Jahr) | damit neu erfasste Werte sofort zählen |
@@ -712,7 +771,7 @@ Zusätzlich wurde die Anwendung auf Tomcat 10.1 mit MySQL durchgeklickt: per HTT
 | 404 unter `/…_war_exploded/` | falsches oder altes Artefakt bzw. falsche URL | Artefakt `LikeHeroToZero:war exploded`, Context `/likeherotozero`, URL <http://localhost:8081/likeherotozero/> |
 | „… not found for the web module“ im IDE-Log | IntelliJ kennt den Ausgabeordner nicht (z. B. nach `mvn clean`) | Maven neu laden, *Build → Rebuild Project* |
 | Login mit Demo-Konto klappt nicht | `DEMO_PASSWORD` fehlt oder Tomcat noch nicht neu gestartet | Wert in `.env` prüfen, Tomcat neu starten, Log nach „Demo-Konto“ durchsuchen |
-| „Initialisierung der Datenbank fehlgeschlagen“ | MySQL läuft nicht oder falsche Zugangsdaten | `docker compose up -d`, Werte in `.env` prüfen |
+| „Datenbank nach 30 Versuchen nicht erreichbar“ | MySQL läuft nicht oder falsche Zugangsdaten | `docker compose up -d --wait`, Werte in `.env` prüfen, danach Startseite neu laden |
 | Startseite ohne Länder | Import fehlgeschlagen (z. B. kein Internet) | Im Backend „Weltbank-Daten aktualisieren“ klicken |
 | Port 3306 belegt | andere MySQL-Instanz läuft | diese stoppen oder `DB_PORT` und `DB_URL` in `.env` anpassen |
 
@@ -744,5 +803,5 @@ Nützliche Log-Meldungen (Tomcat-Konsole bzw. `catalina.*.log`):
 | Ajax | Teilaktualisierung einer Seite ohne kompletten Neuladen (`p:ajax`) |
 | Flash | JSF-Speicher, der Meldungen über eine Weiterleitung hinweg erhält |
 | PBKDF2 | Verfahren zum sicheren Ableiten von Passwort-Hashes mit Salt und vielen Iterationen |
-| `.env` | Datei mit den Zugangsdaten für Datenbank und Demo-Konto, von Anwendung und Docker Compose gelesen |
+| `.env` | Datei mit den Zugangsdaten für Datenbank und Demo-Konto sowie dem Registrierungscode, von Anwendung und Docker Compose gelesen |
 | Data360 | Daten-API der Weltbank, Quelle der Emissionswerte |

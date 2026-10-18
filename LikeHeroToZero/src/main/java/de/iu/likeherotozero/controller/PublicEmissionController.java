@@ -4,6 +4,7 @@ import de.iu.likeherotozero.dao.CountryDAO;
 import de.iu.likeherotozero.dao.EmissionRecordDAO;
 import de.iu.likeherotozero.model.Country;
 import de.iu.likeherotozero.model.EmissionRecord;
+import de.iu.likeherotozero.service.ApplicationInitializer;
 import jakarta.annotation.PostConstruct;
 import jakarta.faces.context.FacesContext;
 import jakarta.faces.view.ViewScoped;
@@ -31,6 +32,9 @@ public class PublicEmissionController implements Serializable {
     @Inject
     private EmissionRecordDAO emissionRecordDAO;
 
+    @Inject
+    private ApplicationInitializer applicationInitializer;
+
     private List<Country> countries = Collections.emptyList();
     private String selectedCountryCode;
     private Country selectedCountry;
@@ -39,6 +43,7 @@ public class PublicEmissionController implements Serializable {
 
     @PostConstruct
     void initialize() {
+        applicationInitializer.ensureInitialized();
         countries = countryDAO.findAll();
     }
 

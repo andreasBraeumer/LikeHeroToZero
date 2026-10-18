@@ -9,6 +9,7 @@ Technik: Jakarta Faces 4 (Mojarra) mit PrimeFaces, CDI (Weld), JPA mit Hibernate
 
 Das Projekt liegt im Ordner [LikeHeroToZero](LikeHeroToZero/):
 
-- [README](LikeHeroToZero/README.md): Einrichtung, Datenbank und Start
+- [Installationsanleitung](LikeHeroToZero/INSTALLATION.md): Schritt für Schritt auf einem neuen Rechner einrichten
+- [README](LikeHeroToZero/README.md): Überblick, Konfiguration und Bedienung
 - [Projektdokumentation](LikeHeroToZero/docs/projektdokumentation.md): alle Prozesse, Daten und Komponenten
 - [Screenshots](LikeHeroToZero/docs/screenshots/)

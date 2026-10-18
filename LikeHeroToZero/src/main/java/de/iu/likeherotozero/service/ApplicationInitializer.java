@@ -18,6 +18,9 @@ public class ApplicationInitializer {
     static final String DEFAULT_DEMO_USERNAME = "demo";
     static final String DEMO_DISPLAY_NAME = "Demo-Wissenschaftler:in";
 
+    private static final int MAXIMUM_STARTUP_ATTEMPTS = 30;
+    private static final long WAIT_BETWEEN_ATTEMPTS_IN_MILLISECONDS = 3000;
+
     private static final Logger LOGGER = Logger.getLogger(ApplicationInitializer.class.getName());
 
     @Inject
@@ -26,15 +29,67 @@ public class ApplicationInitializer {
     @Inject
     private DataImportService dataImportService;
 
+    private volatile boolean initialized;
+
     void onApplicationStart(@Observes @Initialized(ApplicationScoped.class) Object startEvent) {
-        try {
-            synchronizeDemoAccount();
-            dataImportService.importIfEmpty();
-        } catch (RuntimeException initializationException) {
-            LOGGER.log(Level.SEVERE, "Initialisierung der Datenbank fehlgeschlagen. Sind MySQL und die "
-                                     + "Einstellungen DB_URL, DB_USER, DB_PASSWORD korrekt eingerichtet?",
-                    initializationException);
+        initializeWithRetries();
+    }
+
+    public void ensureInitialized() {
+        if (initialized) {
+            return;
         }
+        synchronized (this) {
+            if (initialized) {
+                return;
+            }
+            try {
+                initialize();
+            } catch (RuntimeException initializationException) {
+                LOGGER.log(Level.WARNING, "Datenbank weiterhin nicht erreichbar, Initialisierung wird beim nächsten "
+                                          + "Aufruf erneut versucht.", initializationException);
+            }
+        }
+    }
+
+    private synchronized void initializeWithRetries() {
+        for (int attempt = 1; attempt <= MAXIMUM_STARTUP_ATTEMPTS; attempt++) {
+            try {
+                initialize();
+                return;
+            } catch (RuntimeException initializationException) {
+                if (attempt == MAXIMUM_STARTUP_ATTEMPTS) {
+                    LOGGER.log(Level.SEVERE, "Datenbank nach " + MAXIMUM_STARTUP_ATTEMPTS + " Versuchen nicht erreichbar. "
+                                             + "Sind MySQL und die Einstellungen DB_URL, DB_USER, DB_PASSWORD korrekt? "
+                                             + "Die Initialisierung wird beim ersten Seitenaufruf erneut versucht.",
+                            initializationException);
+                    return;
+                }
+                LOGGER.warning("Datenbank noch nicht erreichbar (Versuch " + attempt + " von " + MAXIMUM_STARTUP_ATTEMPTS
+                               + "), neuer Versuch in " + (WAIT_BETWEEN_ATTEMPTS_IN_MILLISECONDS / 1000) + " Sekunden.");
+                if (!waitBeforeNextAttempt()) {
+                    return;
+                }
+            }
+        }
+    }
+
+    private boolean waitBeforeNextAttempt() {
+        try {
+            Thread.sleep(WAIT_BETWEEN_ATTEMPTS_IN_MILLISECONDS);
+            return true;
+        } catch (InterruptedException interruptedException) {
+            Thread.currentThread().interrupt();
+            LOGGER.warning("Warten auf die Datenbank wurde unterbrochen.");
+            return false;
+        }
+    }
+
+    private void initialize() {
+        synchronizeDemoAccount();
+        dataImportService.importIfEmpty();
+        initialized = true;
+        LOGGER.info("Initialisierung abgeschlossen.");
     }
 
     void synchronizeDemoAccount() {
