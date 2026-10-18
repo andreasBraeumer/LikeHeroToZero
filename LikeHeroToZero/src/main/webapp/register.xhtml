@@ -1,0 +1,87 @@
+<ui:composition xmlns="http://www.w3.org/1999/xhtml"
+                xmlns:h="jakarta.faces.html"
+                xmlns:f="jakarta.faces.core"
+                xmlns:ui="jakarta.faces.facelets"
+                xmlns:p="http://primefaces.org/ui"
+                template="/WEB-INF/templates/layout.xhtml">
+
+  <ui:define name="title">Registrieren</ui:define>
+
+  <ui:define name="content">
+    <section class="card narrow">
+      <h1>Registrierung für Wissenschaftler:innen</h1>
+      <p class="lead">Legen Sie ein Konto an, um eigene Forschungsdaten zu erfassen. Den Registrierungscode
+        erhalten Sie von der Projektleitung.</p>
+
+      <h:panelGroup layout="block" styleClass="notice"
+                    rendered="#{userSession.loggedIn}">
+        Sie sind bereits als <strong>#{userSession.displayName}</strong> angemeldet.
+        <h:link outcome="/backend/emissions" value="Zur Datenpflege"/>
+      </h:panelGroup>
+
+      <h:panelGroup layout="block" styleClass="notice"
+                    rendered="#{not userSession.loggedIn and not registrationController.registrationEnabled}">
+        Die Registrierung ist derzeit nicht freigeschaltet. Bitte wenden Sie sich an die Projektleitung.
+      </h:panelGroup>
+
+      <h:form id="registrationForm" styleClass="form"
+              rendered="#{not userSession.loggedIn and registrationController.registrationEnabled}">
+        <p:messages id="messages" globalOnly="true" showDetail="true" closable="false"/>
+
+        <div class="field">
+          <h:outputLabel for="username" value="Benutzername *" styleClass="field-label"/>
+          <h:inputText id="username" value="#{registrationController.username}" label="Benutzername"
+                       required="true" autocomplete="username" styleClass="input"
+                       validator="#{registrationController.validateUsername}">
+            <f:validateLength minimum="3" maximum="50"/>
+          </h:inputText>
+          <h:message for="username" styleClass="field-error"/>
+          <small class="field-help">3 bis 50 Zeichen: Buchstaben ohne Umlaute, Ziffern, Punkt, Bindestrich, Unterstrich.</small>
+        </div>
+
+        <div class="field">
+          <h:outputLabel for="displayName" value="Anzeigename *" styleClass="field-label"/>
+          <h:inputText id="displayName" value="#{registrationController.displayName}" label="Anzeigename"
+                       required="true" autocomplete="name" styleClass="input">
+            <f:validateLength minimum="2" maximum="100"/>
+          </h:inputText>
+          <h:message for="displayName" styleClass="field-error"/>
+          <small class="field-help">Erscheint in der Datenpflege bei „Geändert von“, z. B. Ihr Name mit Institut.</small>
+        </div>
+
+        <div class="field">
+          <h:outputLabel for="password" value="Passwort *" styleClass="field-label"/>
+          <h:inputSecret id="password" value="#{registrationController.password}" label="Passwort"
+                         required="true" autocomplete="new-password" styleClass="input">
+            <f:validateLength minimum="8" maximum="128"/>
+          </h:inputSecret>
+          <h:message for="password" styleClass="field-error"/>
+          <small class="field-help">Mindestens 8 Zeichen.</small>
+        </div>
+
+        <div class="field">
+          <h:outputLabel for="passwordConfirmation" value="Passwort wiederholen *" styleClass="field-label"/>
+          <h:inputSecret id="passwordConfirmation" value="#{registrationController.passwordConfirmation}"
+                         label="Passwort wiederholen" required="true" autocomplete="new-password"
+                         styleClass="input"/>
+          <h:message for="passwordConfirmation" styleClass="field-error"/>
+        </div>
+
+        <div class="field">
+          <h:outputLabel for="registrationCode" value="Registrierungscode *" styleClass="field-label"/>
+          <h:inputSecret id="registrationCode" value="#{registrationController.registrationCode}"
+                         label="Registrierungscode" required="true" autocomplete="off" styleClass="input">
+            <f:validateLength maximum="200"/>
+          </h:inputSecret>
+          <h:message for="registrationCode" styleClass="field-error"/>
+        </div>
+
+        <div class="actions">
+          <h:commandButton id="register" value="Registrieren" action="#{registrationController.register}"
+                           styleClass="button button-primary"/>
+          <h:link outcome="/login" value="Bereits registriert? Anmelden" styleClass="button button-link"/>
+        </div>
+      </h:form>
+    </section>
+  </ui:define>
+</ui:composition>
